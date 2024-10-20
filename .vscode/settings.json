@@ -1,0 +1,5 @@
+{
+    "appService.showBuildDuringDeployPrompt": false,
+    "appService.defaultWebAppToDeploy": "/subscriptions/500d065f-6478-414f-bd04-1d4459ffe256/resourceGroups/healthfund/providers/Microsoft.Web/sites/healthfund",
+    "appService.deploySubpath": "frontend"
+}

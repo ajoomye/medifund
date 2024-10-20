@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MediFund - Campaigns</title>
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.5.2/dist/web3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.7.1/dist/umd/index.min.js"></script>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      line-height: 1.6;
+      color: #333;
+      margin: 0;
+      padding: 0;
+      background-color: #f4f7f9;
+    }
+    .container {
+      width: 80%;
+      margin: auto;
+      overflow: hidden;
+      padding: 20px;
+    }
+    header {
+      background: #0056b3;
+      color: #ffffff;
+      padding-top: 30px;
+      min-height: 70px;
+      border-bottom: #01c5c4 3px solid;
+    }
+    header a {
+      color: #ffffff;
+      text-decoration: none;
+      text-transform: uppercase;
+      font-size: 16px;
+    }
+    header li {
+      float: left;
+      display: inline;
+      padding: 0 20px 0 20px;
+    }
+    header #branding {
+      float: left;
+    }
+    header #branding h1 {
+      margin: 0;
+    }
+    header nav {
+      float: right;
+      margin-top: 10px;
+    }
+    header .highlight, header .current a {
+      color: #01c5c4;
+      font-weight: bold;
+    }
+    header a:hover {
+      color: #ffffff;
+      font-weight: bold;
+    }
+    #connect-wallet {
+      font-size: 14px;
+      text-decoration: none;
+      color: #ffffff;
+      border: #ffffff 1px solid;
+      padding: 8px 15px;
+      border-radius: 5px;
+      background-color: rgba(1, 197, 196, 0.7);
+      transition: all 0.3s ease;
+      display: inline-block;
+    }
+    #connect-wallet:hover {
+      background-color: #01c5c4;
+      color: #ffffff;
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+    }
+    .nav-links a {
+      margin-right: 20px;
+    }
+    .btn {
+      display: inline-block;
+      background: #01c5c4;
+      color: #ffffff;
+      padding: 10px 20px;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+      font-size: 15px;
+      border-radius: 5px;
+      transition: background-color 0.3s ease;
+    }
+    .btn:hover {
+      background: #00a3a2;
+    }
+    #campaigns, #completed-campaigns, #add-campaign {
+      padding: 20px 0;
+    }
+    .campaign {
+      background: #ffffff;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .campaign h3 {
+      margin-top: 0;
+    }
+    .campaign p {
+      margin-bottom: 10px;
+    }
+    .progress-bar {
+      width: 100%;
+      background-color: #e0e0e0;
+      padding: 3px;
+      border-radius: 3px;
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, .2);
+    }
+    .progress {
+      display: block;
+      height: 22px;
+      background-color: #01c5c4;
+      border-radius: 3px;
+      transition: width 500ms ease-in-out;
+    }
+    .campaign-details {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    form {
+      background: #ffffff;
+      padding: 20px;
+      border-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    form input[type="text"], form select, form textarea {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    form input[type="submit"] {
+      background: #01c5c4;
+      color: #ffffff;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    form input[type="submit"]:hover {
+      background: #00a3a2;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <div id="branding">
+        <h1><span class="highlight">Medi</span>Fund</h1>
+      </div>
+      <nav>
+        <ul>
+          <li class="nav-links">
+            <a href="/">Home</a>
+            <a href="/campaigns" class="current">Campaigns</a>
+            <a href="/hospital-management">Hospital Management</a>
+            <a href="/approve-campaigns">Approve Campaigns</a>
+            <a href="#" id="connect-wallet">Connect Wallet</a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Active Campaigns Section -->
+  <section id="campaigns">
+    <div class="container">
+      <h2>Active Medical Campaigns</h2>
+      <div id="active-campaigns">
+        <p>Loading active campaigns...</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Completed Campaigns Section -->
+  <section id="completed-campaigns">
+    <div class="container">
+      <h2>Completed Campaigns</h2>
+      <div id="completed-campaigns-list">
+        <p>No completed campaigns yet.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Add New Campaign Form -->
+  <section id="add-campaign">
+    <div class="container">
+      <h2>Add New Campaign</h2>
+      <form id="new-campaign-form">
+        <input type="text" id="patient-name" placeholder="Patient Name" required>
+        <select id="hospital-name" required>
+          <option value="">Select Hospital</option>
+          <!-- List of approved hospitals will be dynamically loaded here -->
+        </select>
+        <input type="number" step="0.01" id="goal-amount" placeholder="Goal Amount (in ETH)" required>
+        <textarea id="campaign-description" placeholder="Campaign Description" required></textarea>
+        <input type="submit" value="Submit Campaign">
+      </form>
+    </div>
+  </section>
+
+  <script>
+    let web3;
+    let selectedAccount;
+    let contract;
+    const contractABI = JSON.parse('{{ contract_abi | safe }}');  // Passed from Flask
+    const contractAddress = "{{ contract_address }}";  // Passed from Flask
+
+    // MetaMask connection function
+    const connectWallet = async () => {
+      if (typeof window.ethereum !== 'undefined') {
+        try {
+          await window.ethereum.request({ method: 'eth_requestAccounts' });
+          web3 = new Web3(window.ethereum);
+          const accounts = await web3.eth.getAccounts();
+          selectedAccount = accounts[0];
+          console.log('Connected account:', selectedAccount);
+
+          // Display part of the wallet address in the button
+          document.getElementById('connect-wallet').textContent =
+            `Connected: ${selectedAccount.substring(0, 6)}...${selectedAccount.substring(38)}`;
+
+          // Initialize the contract
+          contract = new web3.eth.Contract(contractABI, contractAddress);
+          console.log('Contract initialized:', contract);
+
+          // Load campaigns and hospitals
+          loadCampaigns();
+          loadHospitals();
+        } catch (error) {
+          console.error('User denied account access');
+        }
+      } else {
+        console.log('Non-Ethereum browser detected. Consider installing MetaMask!');
+      }
+    };
+
+    // Function to load active and completed campaigns
+    const loadCampaigns = async () => {
+  const activeCampaignsDiv = document.getElementById('active-campaigns');
+  const completedCampaignsDiv = document.getElementById('completed-campaigns-list');
+  activeCampaignsDiv.innerHTML = '';  // Clear existing campaigns
+  completedCampaignsDiv.innerHTML = '';  // Clear existing completed campaigns
+
+  try {
+    const campaignCount = await contract.methods.campaignCount().call();
+    console.log(`Total campaigns: ${campaignCount}`);
+
+    if (campaignCount == 0) {
+      activeCampaignsDiv.innerHTML = '<p>No active campaigns.</p>';
+    } else {
+      for (let i = 1; i <= campaignCount; i++) {
+        const campaign = await contract.methods.campaigns(i).call();
+
+        const goalAmountETH = web3.utils.fromWei(campaign.goalAmount, 'ether');
+        const raisedAmountETH = campaign.closed 
+          ? goalAmountETH 
+          : web3.utils.fromWei(campaign.currentAmount, 'ether');
+
+        const progressPercentage = (raisedAmountETH / goalAmountETH) * 100;
+
+        // Check if campaign is closed and conditionally add the donate button
+        const donateButton = campaign.closed 
+          ? ''  // No donate button for closed campaigns
+          : `<button class="btn" onclick="donate(${i})">Donate</button>`;
+
+        const campaignElement = `
+          <div class="campaign">
+            <h3>${campaign.patientName}</h3>
+            <p><strong>Hospital:</strong> ${campaign.hospital}</p>
+            <div class="campaign-details">
+              <span>Goal: ${goalAmountETH} ETH</span>
+              <span>Raised: ${raisedAmountETH} ETH</span>
+            </div>
+            <div class="progress-bar">
+              <span class="progress" style="width: ${progressPercentage}%;"></span>
+            </div>
+            <p>${campaign.description}</p>
+            ${donateButton}  <!-- Insert donate button if the campaign is active -->
+          </div>
+        `;
+
+        if (campaign.closed) {
+          completedCampaignsDiv.insertAdjacentHTML('beforeend', campaignElement);
+        } else {
+          activeCampaignsDiv.insertAdjacentHTML('beforeend', campaignElement);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error loading campaigns:', error);
+  }
+};
+
+    // Function to load hospitals for the dropdown
+    const loadHospitals = async () => {
+      const hospitalSelect = document.getElementById('hospital-name');
+      hospitalSelect.innerHTML = '<option value="">Select Hospital</option>';  // Clear existing options
+
+      try {
+        const hospitalCount = await contract.methods.getHospitalCount().call();
+        for (let i = 0; i < hospitalCount; i++) {
+          const hospitalAddress = await contract.methods.getHospitalAddress(i).call();
+          const hospital = await contract.methods.hospitals(hospitalAddress).call();
+          if (hospital.isApproved) {
+            const option = document.createElement('option');
+            option.value = hospitalAddress;
+            option.text = hospital.name;
+            hospitalSelect.appendChild(option);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading hospitals:', error);
+      }
+    };
+
+    // Function to donate to a campaign
+    const donate = async (campaignId) => {
+      const donationAmount = prompt('Enter the amount of ETH you want to donate:');
+      if (!donationAmount || donationAmount <= 0) {
+        alert('Invalid donation amount.');
+        return;
+      }
+
+      try {
+        const donationAmountInWei = web3.utils.toWei(donationAmount, 'ether');
+        const tx = await contract.methods.donate(campaignId).send({
+          from: selectedAccount,
+          value: donationAmountInWei,
+        });
+
+        console.log('Donation successful:', tx);
+        alert('Donation successful! Transaction Hash: ' + tx.transactionHash);
+
+        // Reload campaigns to update the raised amount
+        loadCampaigns();
+      } catch (error) {
+        console.error('Error making donation:', error);
+        alert('Failed to donate.');
+      }
+    };
+
+    // Add event listener to connect wallet button
+    document.getElementById('connect-wallet').addEventListener('click', connectWallet);
+
+    document.getElementById('new-campaign-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const patientName = document.getElementById('patient-name').value;
+      const hospitalName = document.getElementById('hospital-name').value;
+      const goalAmount = document.getElementById('goal-amount').value;
+      const description = document.getElementById('campaign-description').value;
+
+      const goalAmountInWei = web3.utils.toWei(goalAmount, 'ether');  // Convert goal amount to wei
+
+      try {
+        const tx = await contract.methods.createCampaign(patientName, description, goalAmountInWei, hospitalName)
+          .send({ from: selectedAccount });
+
+        console.log('New campaign created:', tx);
+        alert('New campaign submitted successfully!');
+        loadCampaigns();
+      } catch (error) {
+        console.error('Error creating campaign:', error);
+        alert('Failed to create campaign.');
+      }
+
+      this.reset();
+    });
+  </script>
+</body>
+</html>

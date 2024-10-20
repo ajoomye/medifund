@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MediFund - Approve Campaigns</title>
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.5.2/dist/web3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.7.1/dist/umd/index.min.js"></script>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      line-height: 1.6;
+      color: #333;
+      margin: 0;
+      padding: 0;
+      background-color: #f4f7f9;
+    }
+    .container {
+      width: 80%;
+      margin: auto;
+      overflow: hidden;
+      padding: 20px;
+    }
+    header {
+      background: #0056b3;
+      color: #ffffff;
+      padding-top: 30px;
+      min-height: 70px;
+      border-bottom: #01c5c4 3px solid;
+    }
+    header a {
+      color: #ffffff;
+      text-decoration: none;
+      text-transform: uppercase;
+      font-size: 16px;
+    }
+    header li {
+      float: left;
+      display: inline;
+      padding: 0 20px 0 20px;
+    }
+    header #branding {
+      float: left;
+    }
+    header #branding h1 {
+      margin: 0;
+    }
+    header nav {
+      float: right;
+      margin-top: 10px;
+    }
+    header .highlight, header .current a {
+      color: #01c5c4;
+      font-weight: bold;
+    }
+    header a:hover {
+      color: #ffffff;
+      font-weight: bold;
+    }
+    #connect-wallet {
+      font-size: 14px;
+      text-decoration: none;
+      color: #ffffff;
+      border: #ffffff 1px solid;
+      padding: 8px 15px;
+      border-radius: 5px;
+      background-color: rgba(1, 197, 196, 0.7);
+      transition: all 0.3s ease;
+    }
+    #connect-wallet:hover {
+      background-color: #01c5c4;
+      color: #ffffff;
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+    }
+    .nav-links a {
+      margin-right: 20px;
+    }
+    .campaign-list {
+      background: #ffffff;
+      padding: 20px;
+      margin-top: 20px;
+      border-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .campaign {
+      border-bottom: 1px solid #e0e0e0;
+      padding: 15px 0;
+    }
+    .campaign:last-child {
+      border-bottom: none;
+    }
+    .campaign-details {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .patient-name {
+      font-weight: bold;
+      color: #0056b3;
+    }
+    .hospital-name {
+      color: #757575;
+      font-size: 14px;
+    }
+    .campaign-description {
+      margin-top: 10px;
+      color: #333;
+    }
+    .approve-btn, .reject-btn {
+      padding: 8px 15px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    .approve-btn {
+      background-color: #4CAF50;
+      color: white;
+      margin-right: 10px;
+    }
+    .approve-btn:hover {
+      background-color: #45a049;
+    }
+    .reject-btn {
+      background-color: #f44336;
+      color: white;
+    }
+    .reject-btn:hover {
+      background-color: #da190b;
+    }
+    .no-campaigns-message, .not-hospital-message {
+      color: red;
+      font-weight: bold;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <div id="branding">
+        <h1><span class="highlight">Medi</span>Fund</h1>
+      </div>
+      <nav>
+        <ul>
+          <li class="nav-links">
+            <a href="/">Home</a>
+            <a href="/campaigns">Campaigns</a>
+            <a href="/hospital-management">Hospital Management</a>
+            <a href="/approve-campaigns" class="current">Approve Campaigns</a>
+            <a href="#" id="connect-wallet">Connect Wallet</a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <section id="approve-campaigns">
+    <div class="container">
+      <h2>Approve Campaigns</h2>
+      <div class="campaign-list" id="campaign-list-container">
+        <!-- Pending campaigns will be dynamically added here -->
+      </div>
+      <p id="no-campaigns-message" class="no-campaigns-message" style="display:none;">No pending campaigns for this hospital.</p>
+      <p id="not-hospital-message" class="not-hospital-message" style="display:none;">This page is for hospitals only.</p>
+    </div>
+  </section>
+
+  <script>
+    let web3;
+    let selectedAccount;
+    let contract;
+    const contractABI = JSON.parse('{{ contract_abi | safe }}');  // Pass from Flask
+    const contractAddress = "{{ contract_address }}";  // Pass from Flask
+
+    window.addEventListener('load', function() {
+      const storedAccount = sessionStorage.getItem('connectedWallet');
+      if (storedAccount) {
+        selectedAccount = storedAccount;
+        document.getElementById('connect-wallet').textContent =
+          `Connected: ${selectedAccount.substring(0, 6)}...${selectedAccount.substring(38)}`;
+        initializeWeb3();
+      }
+    });
+
+    const connectWallet = async () => {
+      if (typeof window.ethereum !== 'undefined') {
+        try {
+          await window.ethereum.request({ method: 'eth_requestAccounts' });
+          web3 = new Web3(window.ethereum);
+          const accounts = await web3.eth.getAccounts();
+          selectedAccount = accounts[0];
+          document.getElementById('connect-wallet').textContent =
+            `Connected: ${selectedAccount.substring(0, 6)}...${selectedAccount.substring(38)}`;
+          sessionStorage.setItem('connectedWallet', selectedAccount);
+          initializeWeb3();
+        } catch (error) {
+          console.error('User denied account access');
+        }
+      } else {
+        console.log('Non-Ethereum browser detected. Consider installing MetaMask!');
+      }
+    };
+
+    const initializeWeb3 = async () => {
+      contract = new web3.eth.Contract(contractABI, contractAddress);
+      const isHospitalApproved = await contract.methods.hospitals(selectedAccount).call();
+      if (isHospitalApproved.isApproved) {
+        loadPendingCampaigns();
+      } else {
+        document.getElementById('not-hospital-message').style.display = 'block';
+      }
+    };
+
+    const loadPendingCampaigns = async () => {
+      const campaignCount = await contract.methods.campaignCount().call();
+      const container = document.getElementById('campaign-list-container');
+      container.innerHTML = '';  // Clear previous content
+      let hasPendingCampaigns = false;
+
+      for (let i = 1; i <= campaignCount; i++) {
+        const campaign = await contract.methods.campaigns(i).call();
+        if (!campaign.approved && campaign.hospital.toLowerCase() === selectedAccount.toLowerCase()) {
+          hasPendingCampaigns = true;
+
+          const campaignElement = document.createElement('div');
+          campaignElement.className = 'campaign';
+          campaignElement.innerHTML = `
+            <div class="campaign-details">
+              <div>
+                <span class="patient-name">${campaign.patientName}</span>
+                <span class="hospital-name">${campaign.hospital}</span>
+              </div>
+              <div>
+                <button class="approve-btn" onclick="approveCampaign(${i})">Approve</button>
+                <button class="reject-btn" onclick="rejectCampaign(${i})">Reject</button>
+              </div>
+            </div>
+            <p class="campaign-description">${campaign.description}</p>
+          `;
+          container.appendChild(campaignElement);
+        }
+      }
+
+      if (!hasPendingCampaigns) {
+        document.getElementById('no-campaigns-message').style.display = 'block';
+      }
+    };
+
+    const approveCampaign = async (campaignId) => {
+      try {
+        await contract.methods.approveCampaign(campaignId).send({ from: selectedAccount });
+        loadPendingCampaigns();  // Reload campaigns after approval
+      } catch (error) {
+        console.error('Error approving campaign:', error);
+      }
+    };
+
+    const rejectCampaign = async (campaignId) => {
+      // Handle rejection logic (optional)
+      console.log(`Rejecting campaign ${campaignId}`);
+    };
+
+    document.getElementById('connect-wallet').addEventListener('click', connectWallet);
+  </script>
+</body>
+</html>
+S

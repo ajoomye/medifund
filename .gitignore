@@ -1,0 +1,6 @@
+__pycache__
+backend-brownie/.env
+.history
+.hypothesis/
+build/
+reports/

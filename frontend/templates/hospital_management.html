@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MediFund - Hospital Management</title>
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.5.2/dist/web3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.7.1/dist/umd/index.min.js"></script>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      line-height: 1.6;
+      color: #333;
+      margin: 0;
+      padding: 0;
+      background-color: #f4f7f9;
+    }
+    .container {
+      width: 80%;
+      margin: auto;
+      overflow: hidden;
+      padding: 20px;
+    }
+    header {
+      background: #0056b3;
+      color: #ffffff;
+      padding-top: 30px;
+      min-height: 70px;
+      border-bottom: #01c5c4 3px solid;
+    }
+    header a {
+      color: #ffffff;
+      text-decoration: none;
+      text-transform: uppercase;
+      font-size: 16px;
+    }
+    header li {
+      float: left;
+      display: inline;
+      padding: 0 20px 0 20px;
+    }
+    header #branding {
+      float: left;
+    }
+    header #branding h1 {
+      margin: 0;
+    }
+    header nav {
+      float: right;
+      margin-top: 10px;
+    }
+    header .highlight, header .current a {
+      color: #01c5c4;
+      font-weight: bold;
+    }
+    header a:hover {
+      color: #ffffff;
+      font-weight: bold;
+    }
+    #connect-wallet {
+      font-size: 14px;
+      text-decoration: none;
+      color: #ffffff;
+      border: #ffffff 1px solid;
+      padding: 8px 15px;
+      border-radius: 5px;
+      background-color: rgba(1, 197, 196, 0.7);
+      transition: all 0.3s ease;
+    }
+    #connect-wallet:hover {
+      background-color: #01c5c4;
+      color: #ffffff;
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+    }
+    .nav-links a {
+      margin-right: 20px;
+    }
+    .hospital-list, .add-hospital-form {
+      background: #ffffff;
+      padding: 20px;
+      margin-top: 20px;
+      border-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .hospital {
+      border-bottom: 1px solid #e0e0e0;
+      padding: 15px 0;
+    }
+    .hospital:last-child {
+      border-bottom: none;
+    }
+    .hospital-details {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .hospital-name {
+      font-weight: bold;
+      color: #0056b3;
+    }
+    .hospital-address {
+      color: #757575;
+      font-size: 14px;
+    }
+    form {
+      display: flex;
+      flex-direction: column;
+    }
+    form input, form textarea {
+      margin-bottom: 10px;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    form button {
+      background: #01c5c4;
+      color: #ffffff;
+      border: none;
+      padding: 10px 15px;
+      cursor: pointer;
+      border-radius: 5px;
+      transition: background-color 0.3s ease;
+    }
+    form button:hover {
+      background: #00a3a2;
+    }
+    .not-owner-message {
+      color: red;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <div id="branding">
+        <h1><span class="highlight">Medi</span>Fund</h1>
+      </div>
+      <nav>
+        <ul>
+          <li class="nav-links">
+            <a href="/">Home</a>
+            <a href="/campaigns">Campaigns</a>
+            <a href="/hospital-management" class="current">Hospital Management</a>
+            <a href="/approve-campaigns">Approve Campaigns</a>
+            <a href="#" id="connect-wallet">Connect Wallet</a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <section id="hospital-management">
+    <div class="container">
+      <h2>Hospital Management</h2>
+      <div class="add-hospital-form" id="add-hospital-section" style="display:none;">
+        <h3>Add New Hospital</h3>
+        <form id="add-hospital-form">
+          <input type="text" id="hospital-name" placeholder="Hospital Name" required>
+          <input type="text" id="hospital-address" placeholder="Hospital Ethereum Address" required>
+          <textarea id="hospital-description" placeholder="Hospital Email" required></textarea>
+          <button type="submit">Add Hospital</button>
+        </form>
+      </div>
+      <p id="not-owner-message" class="not-owner-message" style="display:none;">You are not the administrator, you will not be able to add hospitals.</p>
+
+      <div class="hospital-list">
+        <h3>Registered Hospitals</h3>
+        <div id="hospitals-container">
+          <!-- Hospitals will be dynamically added here -->
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    let web3;
+    let selectedAccount;
+    let contract;
+    const contractABI = JSON.parse('{{ contract_abi | safe }}');  // Pass from Flask
+    const contractAddress = "{{ contract_address }}";  // Pass from Flask
+    const ownerAddress = "{{ owner_address }}";  // Contract owner's address (pass from Flask)
+
+    // Check if wallet is already connected in sessionStorage
+    window.addEventListener('load', function() {
+      const storedAccount = sessionStorage.getItem('connectedWallet');
+      if (storedAccount) {
+        selectedAccount = storedAccount;
+        document.getElementById('connect-wallet').textContent =
+          `Connected: ${selectedAccount.substring(0, 6)}...${selectedAccount.substring(38)}`;
+        initializeWeb3();  // Initialize Web3 and load hospitals
+      }
+    });
+
+    const connectWallet = async () => {
+      if (typeof window.ethereum !== 'undefined') {
+        try {
+          await window.ethereum.request({ method: 'eth_requestAccounts' });
+          web3 = new Web3(window.ethereum);
+          const accounts = await web3.eth.getAccounts();
+          selectedAccount = accounts[0];
+          console.log('Connected account:', selectedAccount);
+          document.getElementById('connect-wallet').textContent =
+            `Connected: ${selectedAccount.substring(0, 6)}...${selectedAccount.substring(38)}`;
+          sessionStorage.setItem('connectedWallet', selectedAccount);
+          initializeWeb3();
+        } catch (error) {
+          console.error('User denied account access');
+        }
+      } else {
+        console.log('Non-Ethereum browser detected. Consider installing MetaMask!');
+      }
+    };
+
+    const initializeWeb3 = () => {
+      contract = new web3.eth.Contract(contractABI, contractAddress);
+      checkIfOwner();
+      loadHospitals();
+    };
+
+    // Check if the connected account is the contract owner
+    const checkIfOwner = async () => {
+      if (selectedAccount.toLowerCase() === ownerAddress.toLowerCase()) {
+        document.getElementById('add-hospital-section').style.display = 'block';  // Allow hospital addition
+      } else {
+        document.getElementById('not-owner-message').style.display = 'block';  // Show "not the owner" message
+      }
+    };
+
+    // Load hospitals from the contract
+    const loadHospitals = async () => {
+      const hospitalCount = await contract.methods.getHospitalCount().call();
+      const container = document.getElementById('hospitals-container');
+      container.innerHTML = '';  // Clear previous data
+
+      for (let i = 0; i < hospitalCount; i++) {
+        const hospitalAddress = await contract.methods.getHospitalAddress(i).call();
+        const hospital = await contract.methods.hospitals(hospitalAddress).call();
+
+        const hospitalElement = document.createElement('div');
+        hospitalElement.className = 'hospital';
+        hospitalElement.innerHTML = `
+          <div class="hospital-details">
+            <span class="hospital-name">${hospital.name}</span>
+            <span class="hospital-address">${hospital.hospitalAddress}</span>
+          </div>
+          <p>${hospital.email}</p>
+        `;
+        container.appendChild(hospitalElement);
+      }
+    };
+
+    // Add a new hospital (only by the owner)
+    const addHospital = async (event) => {
+      event.preventDefault();
+      const name = document.getElementById('hospital-name').value;
+      const address = document.getElementById('hospital-address').value;
+      const email = document.getElementById('hospital-description').value;
+
+      try {
+        const tx = await contract.methods.addHospital(name, address, email).send({ from: selectedAccount });
+        console.log('Hospital added:', tx);
+        loadHospitals();  // Reload hospitals
+      } catch (error) {
+        console.error('Error adding hospital:', error);
+      }
+
+      event.target.reset();
+    };
+
+    document.getElementById('connect-wallet').addEventListener('click', connectWallet);
+    document.getElementById('add-hospital-form').addEventListener('submit', addHospital);
+  </script>
+</body>
+</html>

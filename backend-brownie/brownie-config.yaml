@@ -1,0 +1,20 @@
+dependencies:
+  #- <organization/repo>@<version
+  - smartcontractkit/chainlink-brownie-contracts@1.2.0
+  - OpenZeppelin/openzeppelin-contracts@4.0.0
+compiler:
+  solc:
+    remappings:
+      - '@chainlink=smartcontractkit/chainlink-brownie-contracts@1.2.0'
+      - '@openzeppelin=OpenZeppelin/openzeppelin-contracts@4.0.0'
+dotenv: .env
+networks:
+  base-sepolia:
+    host: 'https://base-sepolia.infura.io/v3/eaa2d6d2fd2c4019935a2d451cd57c59'  # Get this URL from Infura or Alchemy
+    chainid: 11155111  # Chain ID for Sepolia Testnet
+    explorer: 'https://sepolia.etherscan.io'  # Sepolia Etherscan link (optional)
+    gas_price: auto  # Optional gas price adjustment
+
+
+wallets:
+  from_key: ${PRIVATE_KEY}

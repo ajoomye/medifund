@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MediFund - Decentralized Medical Crowdfunding</title>
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.5.2/dist/web3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.7.1/dist/umd/index.min.js"></script>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      line-height: 1.6;
+      color: #333;
+      margin: 0;
+      padding: 0;
+      background-color: #f4f7f9;
+    }
+    .container {
+      width: 80%;
+      margin: auto;
+      overflow: hidden;
+      padding: 20px;
+    }
+    header {
+      background: #0056b3;
+      color: #ffffff;
+      padding-top: 30px;
+      min-height: 70px;
+      border-bottom: #01c5c4 3px solid;
+    }
+    header a {
+      color: #ffffff;
+      text-decoration: none;
+      text-transform: uppercase;
+      font-size: 16px;
+    }
+    header li {
+      float: left;
+      display: inline;
+      padding: 0 20px 0 20px;
+    }
+    header #branding {
+      float: left;
+    }
+    header #branding h1 {
+      margin: 0;
+    }
+    header nav {
+      float: right;
+      margin-top: 10px;
+    }
+    header .highlight, header .current a {
+      color: #01c5c4;
+      font-weight: bold;
+    }
+    header a:hover {
+      color: #ffffff;
+      font-weight: bold;
+    }
+    #connect-wallet {
+      font-size: 14px;
+      text-decoration: none;
+      color: #ffffff;
+      border: #ffffff 1px solid;
+      padding: 8px 15px;
+      border-radius: 5px;
+      background-color: rgba(1, 197, 196, 0.7);
+      transition: all 0.3s ease;
+      display: inline-block;
+    }
+    #connect-wallet:hover {
+      background-color: #01c5c4;
+      color: #ffffff;
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+    }
+    .nav-links a {
+      margin-right: 20px;
+    }
+    #hero {
+      background-color: #f4f7f9;
+      text-align: center;
+      padding: 50px 20px;
+    }
+    #hero h1 {
+      color: black;
+      font-size: 2.5em;
+    }
+    #hero p {
+      color: black;
+      font-size: 1.2em;
+    }
+    .campaigns-section {
+      padding: 20px 0;
+    }
+    .campaign {
+      background: #ffffff;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .campaign h3 {
+      margin-top: 0;
+    }
+    .campaign p {
+      margin-bottom: 10px;
+    }
+    .progress-bar {
+      width: 100%;
+      background-color: #e0e0e0;
+      padding: 3px;
+      border-radius: 3px;
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, .2);
+    }
+    .progress {
+      display: block;
+      height: 22px;
+      background-color: #01c5c4;
+      border-radius: 3px;
+      transition: width 500ms ease-in-out;
+    }
+    .btn {
+    display: inline-block;
+    background: #01c5c4;
+    color: #ffffff;
+    padding: 10px 20px;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    font-size: 15px;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+    }
+    .btn:hover {
+      background: #00a3a2;
+    }
+  
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <div id="branding">
+        <h1><span class="highlight">Medi</span>Fund</h1>
+      </div>
+      <nav>
+        <ul>
+          <li class="nav-links">
+            <a href="/">Home</a>
+            <a href="/campaigns">Campaigns</a>
+            <a href="/hospital-management">Hospital Management</a>
+            <a href="/approve-campaigns">Approve Campaigns</a>
+            <a href="#" id="connect-wallet">Connect Wallet</a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <section id="hero">
+    <div class="container">
+      <h1>Decentralized Medical Crowdfunding</h1>
+      <p>Help save lives with the power of blockchain technology</p>
+    </div>
+  </section>
+
+  <!-- Active Campaigns Section -->
+  <section id="campaigns">
+    <div class="container">
+      <h2>Active Medical Campaigns</h2>
+      <div id="active-campaigns">
+        <p>Loading active campaigns...</p>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    let web3;
+    let selectedAccount;
+    let contract;
+    const contractABI = JSON.parse('{{ contract_abi | safe }}');  // Passed from Flask
+    const contractAddress = "{{ contract_address }}";  // Passed from Flask
+
+    // Initialize web3 for read-only if no wallet connected
+    const initWeb3 = async () => {
+      if (typeof window.ethereum !== 'undefined') {
+        web3 = new Web3(window.ethereum);
+      } else {
+        // Fallback to a public provider if no MetaMask is installed
+        const provider = new Web3.providers.HttpProvider('https://mainnet.infura.io/v3/YOUR_INFURA_PROJECT_ID');
+        web3 = new Web3(provider);
+      }
+
+      // Initialize the contract
+      contract = new web3.eth.Contract(contractABI, contractAddress);
+      console.log('Contract initialized:', contract);
+
+      // Load campaigns
+      loadCampaigns();
+    };
+
+    // MetaMask connection function
+    const connectWallet = async () => {
+      if (typeof window.ethereum !== 'undefined') {
+        try {
+          await window.ethereum.request({ method: 'eth_requestAccounts' });
+          const accounts = await web3.eth.getAccounts();
+          selectedAccount = accounts[0];
+
+          // Display part of the wallet address in the button
+          document.getElementById('connect-wallet').textContent =
+            `Connected: ${selectedAccount.substring(0, 6)}...${selectedAccount.substring(38)}`;
+
+          // Load campaigns and persist the wallet connection across the session
+          sessionStorage.setItem('selectedAccount', selectedAccount);
+          loadCampaigns();
+        } catch (error) {
+          console.error('User denied account access');
+        }
+      } else {
+        console.log('Non-Ethereum browser detected. Consider installing MetaMask!');
+      }
+    };
+
+    // Function to load ongoing and approved campaigns
+    const loadCampaigns = async () => {
+      const activeCampaignsDiv = document.getElementById('active-campaigns');
+      activeCampaignsDiv.innerHTML = '';  // Clear existing campaigns
+
+      try {
+        const campaignCount = await contract.methods.campaignCount().call();
+        console.log(`Total campaigns: ${campaignCount}`);
+
+        if (campaignCount == 0) {
+          activeCampaignsDiv.innerHTML = '<p>No ongoing campaigns.</p>';
+        } else {
+          // Loop through campaigns
+          for (let i = 1; i <= campaignCount; i++) {
+            const campaign = await contract.methods.campaigns(i).call();
+
+            // Only display campaigns that are approved and not closed
+            if (campaign.approved && !campaign.closed) {
+              const goalAmountETH = web3.utils.fromWei(campaign.goalAmount, 'ether');
+              const raisedAmountETH = web3.utils.fromWei(campaign.currentAmount, 'ether');
+              const progressPercentage = (raisedAmountETH / goalAmountETH) * 100;
+
+              const campaignElement = `
+                <div class="campaign">
+                  <h3>${campaign.patientName}</h3>
+                  <p><strong>Hospital:</strong> ${campaign.hospital}</p>
+                  <div class="campaign-details">
+                    <span>Goal: ${goalAmountETH} ETH</span>
+                    <span>Raised: ${raisedAmountETH} ETH</span>
+                  </div>
+                  <div class="progress-bar">
+                    <span class="progress" style="width: ${progressPercentage}%;"></span>
+                  </div>                
+                  <p>${campaign.description}</p>
+                  ${campaign.closed ? '<p class="completed-label">Completed</p>' : `<button class="btn" onclick="donate(${i})">Donate</button>`}
+                </div>
+              `;
+              // Add to active campaigns
+              activeCampaignsDiv.insertAdjacentHTML('beforeend', campaignElement);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error loading campaigns:', error);
+        activeCampaignsDiv.innerHTML = '<p>Failed to load campaigns.</p>';
+      }
+    };
+
+    // Function to donate to a campaign
+    const donate = async (campaignId) => {
+      const donationAmount = prompt('Enter the amount of ETH you want to donate:');
+      if (!donationAmount || donationAmount <= 0) {
+        alert('Invalid donation amount.');
+        return;
+      }
+
+      try {
+        const donationAmountInWei = web3.utils.toWei(donationAmount, 'ether');
+        const tx = await contract.methods.donate(campaignId).send({
+          from: selectedAccount,
+          value: donationAmountInWei,
+        });
+
+        console.log('Donation successful:', tx);
+        alert('Donation successful! Transaction Hash: ' + tx.transactionHash);
+
+        // Reload campaigns to update the raised amount
+        loadCampaigns();
+      } catch (error) {
+        console.error('Error making donation:', error);
+        alert('Failed to donate.');
+      }
+    };
+
+    // On page load, check if wallet is already connected in the session
+    window.onload = function() {
+      const storedAccount = sessionStorage.getItem('selectedAccount');
+      if (storedAccount) {
+        selectedAccount = storedAccount;
+        document.getElementById('connect-wallet').textContent =
+          `Connected: ${selectedAccount.substring(0, 6)}...${selectedAccount.substring(38)}`;
+      }
+      initWeb3();
+    };
+
+    // Add event listener to connect wallet button
+    document.getElementById('connect-wallet').addEventListener('click', connectWallet);
+  </script>
+</body>
+</html>
