@@ -11,6 +11,7 @@ MediFund is a decentralized crowdfunding platform built to provide secure, trans
 - **Global Donations**: Donors from around the world can contribute to life-saving medical campaigns.
 - **Integration with MetaMask**: Easy wallet connection using MetaMask for seamless transactions.
 - **Real-Time Updates**: Live tracking of donation progress for each campaign.
+- **Multi-Cryptocurrency Support**: Using **Wormhole SDK**, multiple cryptocurrencies are accepted.
   
 ## Why MediFund?
 
