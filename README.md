@@ -35,5 +35,5 @@ The MediFund platform is powered by a smart contract built using Solidity, ensur
 The current deployment can be found on:
 https://medifund.pythonanywhere.com/
 
-The onchain contract (Base Sepolia) can be found on:
-https://sepolia.basescan.org/address/0x16871fd4a0fcb3372b44a53002a933d1b5947475
+The onchain program (Solana Devnet) can be found on:
+https://explorer.solana.com/address/5qfbwtS1Xn7GxsSAcFbbgGKFPvUUAoKV1HMYqnZCGo2U?cluster=devnet
